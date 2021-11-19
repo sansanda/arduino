@@ -28,13 +28,13 @@ pinButtonStart (2) es el start
 #define             pinVIS 7                          //VIS output pin
 
 unsigned const int  timer1Prescaler = 1;              //valid values are: {1, 8, 64, 256, 1024}
-unsigned const long desired_freq = 40000;             //40000Hz -> T=25us, 25000Hz -> 40us. Valid freq 245 Hz - 8000000 . Recommended 245 - 1000000
-const byte          desired_dutycycle = 10;           // valid values [1,99]. Remember that is inverted. pe 10 is 10% off
+unsigned const long desired_freq = 1000;             //40000Hz -> T=25us, 25000Hz -> 40us. Valid freq 245 Hz - 8000000 . Recommended 245 - 1000000
+const byte          desired_dutycycle = 0;           // valid values [1,99]. Remember that is inverted. pe 10 is 10% off
 
 unsigned long       n_pulses_per_burst = 0;           //don't touch it
 unsigned long       desired_n_pulses_per_burst = 10;  //don't touch it
 
-unsigned const long pulsesPerBurst[] = {4};  //max cell value 2^32 - 1. Max number of cells 512, recommended 200
+unsigned const long pulsesPerBurst[] = {2};  //max cell value 2^32 - 1. Max number of cells 512, recommended 200
 unsigned const int  nBursts = 1;                              // Is the size of the previous array
 unsigned long 		nBurstsEmited = 0;
 unsigned const long delayBetweenBursts = 500;                 // in ms
@@ -193,7 +193,7 @@ void loop()
 	if (nBurstsEmited==0)
     {
       startBurstTrain(nBursts, pulsesPerBurst, delayBetweenBursts, pinUS, F_CPU, timer1Prescaler, desired_freq, desired_dutycycle);
+      Serial.println(analogRead(A0));
       nBurstsEmited++;
-      Serial.print("hola");
     }
 }
