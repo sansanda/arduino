@@ -16,6 +16,15 @@
  * 2. CIRCUITO DE ALIMENTACIÓN Y CONTRO DEL RIEGO
  * Utilizamos una bomba periestaltica cuyo eje se acciona mediante un motor CC de 6V alimentado a través de un puente en H con una pila de 9V.
  *
+ * 3. ALIMENTACION DEL ARDUINO
+ * Por lo pronto la alimentacion del arduino es via usb
+ *
+ * 4. ASPECTOS A MEJORAR EN LAS PROXIMAS VERSIONES
+ *
+ * 		4.1 Uso de timer, interrupciones y rutinas para la automatizacion de la medida de la humedad del suelo y el riego
+ * 		4.2 Añadir un display para que, cuando apretemos un boton nos muestre la lectura actual de la humedad del suelo y los diferentes parametros del control
+ * 		los valores de min y max.
+ * 		4.3 Añadir la opcion de modificar los parametros de control de manera externa mediante un teclado.
  *
  * Este sensor se pincha en la tierra hasta la mitad aprox.
  */
