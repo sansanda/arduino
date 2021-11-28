@@ -43,9 +43,11 @@
 
 
 //Variables de control de los niveles de humedad
-double moistureThresholdMin = 60.0; 	//60.0
-double moistureThresholdMax = 75.0; 	//75.0
-
+double moistureThresholdMin = 60.0; 		//60.0
+double moistureThresholdMax = 75.0; 		//75.0
+double brokenMoistureSensor_Threshold = 3.0;//3.0. Cuando la humedad medida está por debajo de este valor se considera que algo ha ocurrido con el sensor.
+		 	 	 	 	 	 	 	 	 	// Por ejemplo el sensor puede estar desconectado o roto el cable. Un valor tan bajo siempre indica una corriente
+											// muy baja por el divisor de tension que forman la R=1k y el sensor de humedad del suelo.
 
 //Variables para la medidad de la humedad
 double 			lastMoistureMeasure;
@@ -59,7 +61,7 @@ unsigned long	delayBetweenWateringTimes_ms = 10000;
 
 //valores de la regresion lineal de la funcion que relaciona la lectura del arduino (x = digital) con el porcentaje de humedad del suelo (y)
 float m = -0.1683;
-float b = 164.468;
+float b = 172.39;
 
 //The setup function is called once at startup of the sketch
 void setup()
@@ -97,23 +99,27 @@ void loop()
 {
 	lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
 
-	if ((lastMoistureMeasure>moistureThresholdMin)) {
-
-// 		Don't do anything
-		Serial.println("Moisture above = " + String(moistureThresholdMin));
-
-	} else {
-
-		Serial.println("Moisture value is under the minimum = " + String(moistureThresholdMin));
-
-		while (lastMoistureMeasure<moistureThresholdMax)
-		{
-
-			waterPlant(IN1,IN2,wateringTime_ms, wateringTimes, delayBetweenWateringTimes_ms); // @suppress("Invalid arguments")
-			lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
-		}
-
+	if (lastMoistureMeasure<brokenMoistureSensor_Threshold)
+	{
+		//No conduce corriente o esta es muy baja. Posible rotura del sensor o del cable o fallo en la conexion con el Arduino
+		Serial.println("OJO!!!! POSIBLE ROTURA DEL CABLE DEL SENSOR O FALLO EN LA CONEXION CON EL ARDUINO.");
 	}
+	else
+	{
+		if ((lastMoistureMeasure>moistureThresholdMin)) {
+			//Don't do anything
+			Serial.println("Moisture above = " + String(moistureThresholdMin));
+		} else
+		{
+			Serial.println("Moisture value is under the minimum = " + String(moistureThresholdMin));
+			while (lastMoistureMeasure<moistureThresholdMax)
+			{
+				waterPlant(IN1,IN2,wateringTime_ms, wateringTimes, delayBetweenWateringTimes_ms); // @suppress("Invalid arguments")
+				lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
+			}
+		}
+	}
+
 
 	delay(moistureMeasuringPeriod_ms); //check humidity every moistureMeasuringPeriod_ms
 }
@@ -122,6 +128,7 @@ double checkMoisture(int positivePin, int negativePin, int channelLecture){
 
 	Serial.println("Checking plant moisture value....");
 	unsigned int  a0_lecture = readMoistureSensor(D7, D8, A0); // @suppress("Invalid arguments")
+
 	Serial.println("Plant Moisture Lecture = " + String(a0_lecture));
 
 	double moistureLecture = (m * a0_lecture) + b;
@@ -142,7 +149,7 @@ unsigned int readMoistureSensor(int positivePin, int negativePin, int channelLec
 
 	delay(1000);
 
-	humidityLecture = analogRead(channelLecture);
+	humidityLecture = analogRead(channelLecture); //devuelve un valor entre 0 y 1024 propio de un adc de 10 bits
 
 	delay(100);
 
