@@ -11,11 +11,19 @@
 #define A0 14
 
 
-unsigned int moistureThresholdMin = 55;
-unsigned int moistureThresholdMax = 80;
+double moistureThresholdMin = 60.0; 	//60.0
+double moistureThresholdMax = 75.0; 	//75.0
+double lastMoistureMeasure;
 
-unsigned long checkingPeriod_ms = 10000; //60000
-unsigned long wateringTime_ms = 1000;
+unsigned long 	checkingPeriod_ms 	= 3600000; //3600000
+unsigned long 	wateringTime_ms 	= 2000;
+unsigned int 	wateringTimes 		= 1;
+unsigned long	delayBetweenWateringTimes_ms = 10000;
+
+
+//valores de la regresion lineal de la funcion que relaciona la lectura del arduino (x = digital) con el porcentaje de humedad del suelo (y)
+float m = -0.1683;
+float b = 164.468;
 
 //The setup function is called once at startup of the sketch
 
@@ -52,23 +60,40 @@ void setup()
 // The loop function is called in an endless loop
 void loop()
 {
-	Serial.println("Checking plant moisture value....");
-	unsigned int  a0_lecture = readMoistureSensor(D7, D8, A0);
-	Serial.println("Plant Moisture Lecture = " + String(a0_lecture));
-	unsigned long moistureLecture = map(a0_lecture, 300L, 1024L, 100L, 0L);
-	Serial.println("Plant Moisture in percent = " + String(moistureLecture));
-	if ((moistureLecture>moistureThresholdMin and moistureLecture<moistureThresholdMax)) {
+	lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
+
+	if ((lastMoistureMeasure>moistureThresholdMin)) {
 
 // 		Don't do anything
-		Serial.print("Moisture value between max = " + String(moistureThresholdMin));
-		Serial.println(" and Max = " + String(moistureThresholdMax) );
+		Serial.println("Moisture above = " + String(moistureThresholdMin));
 
 	} else {
 
 		Serial.println("Moisture value is under the minimum = " + String(moistureThresholdMin));
-		waterPlant(IN1,IN2,wateringTime_ms);
+
+		while (lastMoistureMeasure<moistureThresholdMax)
+		{
+
+			waterPlant(IN1,IN2,wateringTime_ms, wateringTimes, delayBetweenWateringTimes_ms); // @suppress("Invalid arguments")
+			lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
+		}
+
 	}
-	delay(checkingPeriod_ms); //check humidity every 60" or 60000ms
+
+	delay(checkingPeriod_ms); //check humidity every checkingPeriod_ms
+}
+
+double checkMoisture(int positivePin, int negativePin, int channelLecture){
+
+	Serial.println("Checking plant moisture value....");
+	unsigned int  a0_lecture = readMoistureSensor(D7, D8, A0); // @suppress("Invalid arguments")
+	Serial.println("Plant Moisture Lecture = " + String(a0_lecture));
+
+	double moistureLecture = (m * a0_lecture) + b;
+
+	Serial.println("Plant Moisture in percent = " + String(moistureLecture));
+
+	return moistureLecture;
 }
 
 unsigned int readMoistureSensor(int positivePin, int negativePin, int channelLecture)
@@ -97,23 +122,29 @@ unsigned int readMoistureSensor(int positivePin, int negativePin, int channelLec
 	return humidityLecture;
 }
 
-void waterPlant(int controlPin1, int controlPin2, unsigned long wateringTime_ms)
+void waterPlant(int controlPin1, int controlPin2, unsigned long wateringTime_ms, unsigned int wateringTimes, unsigned long delayBetweenWateringTimes_ms)
 {
 	Serial.println("Proceding to water the plant....");
 
-	digitalWrite(BRIDGE_ACTIVATION_PIN, HIGH); //Activación de la lógica de control del puente en H
+	for (int i = 0;i<wateringTimes;i++)
+	{
+		digitalWrite(BRIDGE_ACTIVATION_PIN, HIGH); //Activación de la lógica de control del puente en H
 
-	delay(200);
+		delay(200);
 
-	digitalWrite (controlPin1, HIGH);
-	digitalWrite (controlPin2, LOW);
+		digitalWrite (controlPin1, HIGH);
+		digitalWrite (controlPin2, LOW);
 
-	delay(wateringTime_ms);
+		delay(wateringTime_ms);
 
-	digitalWrite (controlPin1, LOW);
-	digitalWrite (controlPin2, LOW);
+		digitalWrite (controlPin1, LOW);
+		digitalWrite (controlPin2, LOW);
 
-	digitalWrite(BRIDGE_ACTIVATION_PIN, LOW); //Desactivación de la lógica de control del puente en H
+		digitalWrite(BRIDGE_ACTIVATION_PIN, LOW); //Desactivación de la lógica de control del puente en H
+
+		delay(delayBetweenWateringTimes_ms);
+	}
+
 }
 
 
