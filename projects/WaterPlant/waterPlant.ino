@@ -99,10 +99,9 @@ void loop()
 {
 	lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
 
-	if (lastMoistureMeasure<brokenMoistureSensor_Threshold)
+	if (isSoilMoistureSensorBroken(lastMoistureMeasure)) // @suppress("Invalid arguments")
 	{
-		//No conduce corriente o esta es muy baja. Posible rotura del sensor o del cable o fallo en la conexion con el Arduino
-		Serial.println("OJO!!!! POSIBLE ROTURA DEL CABLE DEL SENSOR O FALLO EN LA CONEXION CON EL ARDUINO.");
+		//The sensor is broken. We cannot continue
 	}
 	else
 	{
@@ -114,8 +113,14 @@ void loop()
 			Serial.println("Moisture value is under the minimum = " + String(moistureThresholdMin));
 			while (lastMoistureMeasure<moistureThresholdMax)
 			{
+
 				waterPlant(IN1,IN2,wateringTime_ms, wateringTimes, delayBetweenWateringTimes_ms); // @suppress("Invalid arguments")
 				lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
+				if (isSoilMoistureSensorBroken(lastMoistureMeasure)) // @suppress("Invalid arguments")
+				{
+					//The sensor is broken. We cannot continue
+					break;
+				}
 			}
 		}
 	}
@@ -124,7 +129,20 @@ void loop()
 	delay(moistureMeasuringPeriod_ms); //check humidity every moistureMeasuringPeriod_ms
 }
 
-double checkMoisture(int positivePin, int negativePin, int channelLecture){
+bool isSoilMoistureSensorBroken(double moistureMeasure)
+{
+	bool BrokenMoistureSensor = false;
+
+	if (lastMoistureMeasure<brokenMoistureSensor_Threshold)
+	{
+		//No conduce corriente o esta es muy baja. Posible rotura del sensor o del cable o fallo en la conexion con el Arduino
+		Serial.println("OJO!!!! POSIBLE ROTURA DEL CABLE DEL SENSOR O FALLO EN LA CONEXION CON EL ARDUINO.");
+		BrokenMoistureSensor = true;
+	}
+	return BrokenMoistureSensor;
+}
+double checkMoisture(int positivePin, int negativePin, int channelLecture)
+{
 
 	Serial.println("Checking plant moisture value....");
 	unsigned int  a0_lecture = readMoistureSensor(D7, D8, A0); // @suppress("Invalid arguments")
