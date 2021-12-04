@@ -51,12 +51,13 @@ double brokenMoistureSensor_Threshold = 3.0;//3.0. Cuando la humedad medida está
 
 //Variables para la medidad de la humedad
 double 			lastMoistureMeasure;
-unsigned long 	moistureMeasuringPeriod_ms 	= 3600000; //3600000
+unsigned long 	moistureMeasuringPeriod_ms 	= 1000; //3600000
 
 //Variables para el control del riego de la planta
+boolean 		enableWatering		= false;
 unsigned long 	wateringTime_ms 	= 2000;
 unsigned int 	wateringTimes 		= 1;
-unsigned long	delayBetweenWateringTimes_ms = 10000;
+unsigned long	delayBetweenWateringTimes_ms = 1000;
 
 
 //valores de la regresion lineal de la funcion que relaciona la lectura del arduino (x = digital) con el porcentaje de humedad del suelo (y)
@@ -108,20 +109,29 @@ void loop()
 		if ((lastMoistureMeasure>moistureThresholdMin)) {
 			//Don't do anything
 			Serial.println("Moisture above = " + String(moistureThresholdMin));
-		} else
+		}
+		else
 		{
 			Serial.println("Moisture value is under the minimum = " + String(moistureThresholdMin));
-			while (lastMoistureMeasure<moistureThresholdMax)
+			if (enableWatering)
 			{
-
-				waterPlant(IN1,IN2,wateringTime_ms, wateringTimes, delayBetweenWateringTimes_ms); // @suppress("Invalid arguments")
-				lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
-				if (isSoilMoistureSensorBroken(lastMoistureMeasure)) // @suppress("Invalid arguments")
+				while (lastMoistureMeasure<moistureThresholdMax)
 				{
-					//The sensor is broken. We cannot continue
-					break;
+
+					waterPlant(IN1,IN2,wateringTime_ms, wateringTimes, delayBetweenWateringTimes_ms); // @suppress("Invalid arguments")
+					lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
+					if (isSoilMoistureSensorBroken(lastMoistureMeasure)) // @suppress("Invalid arguments")
+					{
+						//The sensor is broken. We cannot continue
+						break;
+					}
 				}
 			}
+			else
+			{
+				Serial.println("Watering is disabled. Then, we won't water the plant");
+			}
+
 		}
 	}
 
