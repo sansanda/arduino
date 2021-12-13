@@ -30,6 +30,7 @@
  */
 
 #include "Arduino.h"
+#include <avr/sleep.h>
 
 //Pines para el control de puente en H
 #define IN1 2
@@ -43,26 +44,31 @@
 
 
 //Variables de control de los niveles de humedad
-double moistureThresholdMin = 60.0; 		//60.0
-double moistureThresholdMax = 75.0; 		//75.0
-double brokenMoistureSensor_Threshold = 3.0;//3.0. Cuando la humedad medida está por debajo de este valor se considera que algo ha ocurrido con el sensor.
+double moistureThresholdMin = 25.0; 		//60.0
+double moistureThresholdMax = 40.0; 		//75.0
+double brokenMoistureSensor_Threshold = 0.0;//3.0. Cuando la humedad medida está por debajo de este valor se considera que algo ha ocurrido con el sensor.
 		 	 	 	 	 	 	 	 	 	// Por ejemplo el sensor puede estar desconectado o roto el cable. Un valor tan bajo siempre indica una corriente
 											// muy baja por el divisor de tension que forman la R=1k y el sensor de humedad del suelo.
 
 //Variables para la medidad de la humedad
 double 			lastMoistureMeasure;
-unsigned long 	moistureMeasuringPeriod_ms 	= 1000; //3600000
+unsigned long 	moistureMeasuringPeriod_ms 	= 3600000; //3600000
 
 //Variables para el control del riego de la planta
-boolean 		enableWatering		= false;
+boolean 		enableWatering		= true;
 unsigned long 	wateringTime_ms 	= 2000;
 unsigned int 	wateringTimes 		= 1;
 unsigned long	delayBetweenWateringTimes_ms = 1000;
 
 
 //valores de la regresion lineal de la funcion que relaciona la lectura del arduino (x = digital) con el porcentaje de humedad del suelo (y)
-float m = -0.1683;
-float b = 172.39;
+//Cuando el sustrato se encuentra practicamente seco, el valor que lee el arduino en el divisor de tension es 900.
+//Cuando el sensor se introduce en agua el valor que lee el arduino es 0.
+float b = 100.0;
+float m = -b/900.0;
+
+//Timer variables
+unsigned int prescale = 64;
 
 //The setup function is called once at startup of the sketch
 void setup()
@@ -92,6 +98,10 @@ void setup()
 	digitalWrite(D7, LOW);
 	digitalWrite(D8, LOW);
 	digitalWrite(BRIDGE_ACTIVATION_PIN, LOW);
+
+//	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+//	sleep_enable();
+//	sleep_cpu();
 
 }
 
@@ -139,6 +149,78 @@ void loop()
 	delay(moistureMeasuringPeriod_ms); //check humidity every moistureMeasuringPeriod_ms
 }
 
+
+//************************************
+//CONFIGURACION TIMER E INTERRUPCIONES
+//************************************
+
+//Atmega 328p (Arduino Uno, Nano)
+// Frecuencias
+// Timer0   62500 Hz
+// Timer1   31250 Hz
+// Timer2   31250 Hz
+// Prescalers
+// Timer0   1 8 64 256 1024
+// Timer1   1 8 64 256 1024
+// Timer2   1 8 32 64 128 256 1024
+// Valores por defecto
+// Timer0 64   977Hz
+// Timer1 64   490Hz
+// Timer2 64   490Hz
+// Consecuencias
+// Timer0   delay() y millis()
+// Timer1   Librería servo
+// Timer2
+
+
+void configureTimer1ClockSource(unsigned int _prescale){
+
+	byte mode;
+
+	switch(_prescale) {
+		case 0:     mode = 0b000; prescale=_prescale; break; //prescaler a 0  Timer1 OFF.
+		case 1: 	mode = 0b001; prescale=_prescale; break; //prescaler a 1. Timer1 clock source T1 = 16.000.000 Hz (0.0625us)
+		case 8: 	mode = 0b010; prescale=_prescale; break; //prescaler a 8. Timer1 clock source T1 = 2.000.000 Hz (0.5us)
+	    case 64: 	mode = 0b011; prescale=_prescale; break; //prescaler a 64. Timer1 clock source T1 = 250.000 Hz (4us)
+	    case 256:	mode = 0b100; prescale=_prescale; break; //prescaler a 256. Timer1 clock source T1 = 62.500 Hz (16us)
+	    case 1024: 	mode = 0b101; prescale=_prescale; break; //prescaler a 1024. Timer1 clock source T1 = 15.625 Hz (64us)
+	    default: return;
+	}
+
+	TCCR1B = (TCCR1B & 0b11111000) | mode;
+}
+
+void stopTimer1()
+{
+	configureTimer1ClockSource(0);
+}
+
+void initTimer1(unsigned const long cpu_freq,
+                unsigned const long time_in_secs){
+
+  TCCR1A = 0;
+  TCCR1B = 0;
+
+  // Set output compare mode as disconected
+  TCCR1A = TCCR1A & 0b00111111
+
+  //Configure the operation mode (CTC Mode)
+  TCCR1B |= (1 << WGM12);
+
+  //Configure the output compare register A
+
+  OCR1A = ICR1 * (dutycicle/100.0) ;
+  //Serial.print("OCR1A = ");
+  //Serial.println(OCR1A);
+  //Enable Timer1 overflow Interrupt
+  TIMSK1 = TIMSK1 | (1<<TOIE1);
+}
+
+//****************************************
+//FIN CONFIGURACION TIMER E INTERRUPCIONES
+//****************************************
+
+
 bool isSoilMoistureSensorBroken(double moistureMeasure)
 {
 	bool BrokenMoistureSensor = false;
@@ -149,12 +231,14 @@ bool isSoilMoistureSensorBroken(double moistureMeasure)
 		Serial.println("OJO!!!! POSIBLE ROTURA DEL CABLE DEL SENSOR O FALLO EN LA CONEXION CON EL ARDUINO.");
 		BrokenMoistureSensor = true;
 	}
+
 	return BrokenMoistureSensor;
 }
 double checkMoisture(int positivePin, int negativePin, int channelLecture)
 {
 
 	Serial.println("Checking plant moisture value....");
+
 	unsigned int  a0_lecture = readMoistureSensor(D7, D8, A0); // @suppress("Invalid arguments")
 
 	Serial.println("Plant Moisture Lecture = " + String(a0_lecture));
