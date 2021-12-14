@@ -31,6 +31,8 @@
 
 #include "Arduino.h"
 #include <avr/sleep.h>
+#include <LowPower.h>
+
 
 //Pines para el control de puente en H
 #define IN1 2
@@ -52,7 +54,7 @@ double brokenMoistureSensor_Threshold = 0.0;//3.0. Cuando la humedad medida está
 
 //Variables para la medidad de la humedad
 double 			lastMoistureMeasure;
-unsigned long 	moistureMeasuringPeriod_ms 	= 3600000; //3600000
+unsigned long 	takeCareOfPlantPeriod_in_secs 	= 3600; //3600
 
 //Variables para el control del riego de la planta
 boolean 		enableWatering		= true;
@@ -67,8 +69,12 @@ unsigned long	delayBetweenWateringTimes_ms = 1000;
 float b = 100.0;
 float m = -b/900.0;
 
+
 //Timer variables
 unsigned int prescale = 64;
+byte prescale_mode = 0b011;
+unsigned long cpu_clock_freq = 16000000; //In Hz
+unsigned long time_counter_in_secs = 0;
 
 //The setup function is called once at startup of the sketch
 void setup()
@@ -99,14 +105,132 @@ void setup()
 	digitalWrite(D8, LOW);
 	digitalWrite(BRIDGE_ACTIVATION_PIN, LOW);
 
-//	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-//	sleep_enable();
-//	sleep_cpu();
+	//Configure timer1
+	configureTimer1ClockSource(1024);
+	initTimer1(4);
+	startTimer1();
+
+
+	LowPower.powerSave(SLEEP_MODE_PWR_SAVE, ADC_OFF, BOD_OFF, TIMER2_OFF);
+	//detachInterrupt(0);
+
 
 }
 
 // The loop function is called in an endless loop
 void loop()
+{
+}
+
+
+//************************************
+//CONFIGURACION TIMER E INTERRUPCIONES
+//************************************
+
+//Atmega 328p (Arduino Uno, Nano)
+// Frecuencias
+// Timer0   62500 Hz
+// Timer1   31250 Hz
+// Timer2   31250 Hz
+// Prescalers
+// Timer0   1 8 64 256 1024
+// Timer1   1 8 64 256 1024
+// Timer2   1 8 32 64 128 256 1024
+// Valores por defecto
+// Timer0 64   977Hz
+// Timer1 64   490Hz
+// Timer2 64   490Hz
+// Consecuencias
+// Timer0   delay() y millis()
+// Timer1   Librería servo
+// Timer2
+
+
+void configureTimer1ClockSource(unsigned int _prescale){
+
+	byte mode;
+
+
+	switch(_prescale) {
+		case 0:     prescale_mode = 0b000; prescale=_prescale; break; //prescaler a 0  Timer1 OFF.
+		case 1: 	prescale_mode = 0b001; prescale=_prescale; break; //prescaler a 1. Timer1 clock source T1 = 16.000.000 Hz (0.0625us)
+		case 8: 	prescale_mode = 0b010; prescale=_prescale; break; //prescaler a 8. Timer1 clock source T1 = 2.000.000 Hz (0.5us)
+	    case 64: 	prescale_mode = 0b011; prescale=_prescale; break; //prescaler a 64. Timer1 clock source T1 = 250.000 Hz (4us)
+	    case 256:	prescale_mode = 0b100; prescale=_prescale; break; //prescaler a 256. Timer1 clock source T1 = 62.500 Hz (16us)
+	    case 1024: 	prescale_mode = 0b101; prescale=_prescale; break; //prescaler a 1024. Timer1 clock source T1 = 15.625 Hz (64us)
+	    default: return;
+	}
+
+}
+
+void stopTimer1()
+{
+	configureTimer1ClockSource(0);
+	TCCR1B = (TCCR1B & 0b11111000) | prescale_mode;
+}
+
+void startTimer1()
+{
+	TCCR1B = (TCCR1B & 0b11111000) | prescale_mode;
+}
+
+void initTimer1(unsigned long time_in_secs){
+
+	//Puesta a cero del contador del timer1
+	TCNT1  = 0;
+
+	//Reseteo de los bits del Timer/Counter Control Register
+	TCCR1A = 0;
+	TCCR1B = 0;
+
+	// Set output compare mode as disconected
+	TCCR1A = TCCR1A & 0b00111111;
+
+	//Configure the operation mode (CTC Mode)
+	TCCR1B |= (1 << WGM12);
+
+    //Configure the output compare register A
+	OCR1A = time_in_secs * (cpu_clock_freq/prescale) ;
+
+	//Serial.print("OCR1A = ");
+	//Serial.println(OCR1A);
+	//Enable Timer1 Output Compare Interrupt
+	TIMSK1 = TIMSK1 | (1<<OCIE1A);
+
+}
+
+
+//Timer1 Counter compare with OCR1A ISR
+//Esta llamada se produce cada vez que el contador del timer1 alcanza el valor
+
+ISR(TIMER1_COMPA_vect)
+{
+
+	stopTimer1();
+	TCNT1 = 0;                    //reset the timer 1 counter
+
+	time_counter_in_secs = time_counter_in_secs + 4;
+	if (time_counter_in_secs>takeCareOfPlantPeriod_in_secs)
+	{
+		time_counter_in_secs = 0;
+		takeCareOfPlant();
+	}
+
+	configureTimer1ClockSource(1024);
+	initTimer1(4);
+    startTimer1();
+
+	LowPower.powerSave(SLEEP_MODE_PWR_SAVE, ADC_OFF, BOD_OFF, TIMER2_OFF);
+	//detachInterrupt(0);
+
+}
+
+
+//****************************************
+//FIN CONFIGURACION TIMER E INTERRUPCIONES
+//****************************************
+
+void takeCareOfPlant()
 {
 	lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
 
@@ -144,82 +268,7 @@ void loop()
 
 		}
 	}
-
-
-	delay(moistureMeasuringPeriod_ms); //check humidity every moistureMeasuringPeriod_ms
 }
-
-
-//************************************
-//CONFIGURACION TIMER E INTERRUPCIONES
-//************************************
-
-//Atmega 328p (Arduino Uno, Nano)
-// Frecuencias
-// Timer0   62500 Hz
-// Timer1   31250 Hz
-// Timer2   31250 Hz
-// Prescalers
-// Timer0   1 8 64 256 1024
-// Timer1   1 8 64 256 1024
-// Timer2   1 8 32 64 128 256 1024
-// Valores por defecto
-// Timer0 64   977Hz
-// Timer1 64   490Hz
-// Timer2 64   490Hz
-// Consecuencias
-// Timer0   delay() y millis()
-// Timer1   Librería servo
-// Timer2
-
-
-void configureTimer1ClockSource(unsigned int _prescale){
-
-	byte mode;
-
-	switch(_prescale) {
-		case 0:     mode = 0b000; prescale=_prescale; break; //prescaler a 0  Timer1 OFF.
-		case 1: 	mode = 0b001; prescale=_prescale; break; //prescaler a 1. Timer1 clock source T1 = 16.000.000 Hz (0.0625us)
-		case 8: 	mode = 0b010; prescale=_prescale; break; //prescaler a 8. Timer1 clock source T1 = 2.000.000 Hz (0.5us)
-	    case 64: 	mode = 0b011; prescale=_prescale; break; //prescaler a 64. Timer1 clock source T1 = 250.000 Hz (4us)
-	    case 256:	mode = 0b100; prescale=_prescale; break; //prescaler a 256. Timer1 clock source T1 = 62.500 Hz (16us)
-	    case 1024: 	mode = 0b101; prescale=_prescale; break; //prescaler a 1024. Timer1 clock source T1 = 15.625 Hz (64us)
-	    default: return;
-	}
-
-	TCCR1B = (TCCR1B & 0b11111000) | mode;
-}
-
-void stopTimer1()
-{
-	configureTimer1ClockSource(0);
-}
-
-void initTimer1(unsigned const long cpu_freq,
-                unsigned const long time_in_secs){
-
-  TCCR1A = 0;
-  TCCR1B = 0;
-
-  // Set output compare mode as disconected
-  TCCR1A = TCCR1A & 0b00111111
-
-  //Configure the operation mode (CTC Mode)
-  TCCR1B |= (1 << WGM12);
-
-  //Configure the output compare register A
-
-  OCR1A = ICR1 * (dutycicle/100.0) ;
-  //Serial.print("OCR1A = ");
-  //Serial.println(OCR1A);
-  //Enable Timer1 overflow Interrupt
-  TIMSK1 = TIMSK1 | (1<<TOIE1);
-}
-
-//****************************************
-//FIN CONFIGURACION TIMER E INTERRUPCIONES
-//****************************************
-
 
 bool isSoilMoistureSensorBroken(double moistureMeasure)
 {

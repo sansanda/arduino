@@ -41,5 +41,10 @@
 			<type>2</type>
 			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/arduino/hardware/avr/1.8.3/variants/eightanaloginputs</locationURI>
 		</link>
+		<link>
+			<name>libraries/Low-Power</name>
+			<type>2</type>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/Low-Power/1.81.0</locationURI>
+		</link>
 	</linkedResources>
 </projectDescription>

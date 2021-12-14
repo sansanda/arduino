@@ -2,13 +2,21 @@
 //This is a automatic generated file
 //Please do not modify this file
 //If you touch this file your change will be overwritten during the next build
-//This file has been generated on 2021-12-12 23:50:27
+//This file has been generated on 2021-12-14 23:51:58
 
 #include "Arduino.h"
 #include "Arduino.h"
+#include <avr/sleep.h>
+#include <LowPower.h>
 
 void setup() ;
 void loop() ;
+void configureTimer1ClockSource(unsigned int _prescale);
+void stopTimer1() ;
+void startTimer1() ;
+void initTimer1(unsigned long time_in_secs);
+ISR(TIMER1_COMPA_vect) ;
+void takeCareOfPlant() ;
 bool isSoilMoistureSensorBroken(double moistureMeasure) ;
 double checkMoisture(int positivePin, int negativePin, int channelLecture) ;
 unsigned int readMoistureSensor(int positivePin, int negativePin, int channelLecture) ;
