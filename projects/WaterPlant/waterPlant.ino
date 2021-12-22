@@ -29,9 +29,17 @@
  * Este sensor se pincha en la tierra hasta la mitad aprox.
  */
 
+
 #include "Arduino.h"
 #include <avr/sleep.h>
 #include <LowPower.h>
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+//#include <Adafruit_SSD1306.h>
+
+//For debugging
+#define __DEBUG__
 
 
 //Pines para el control de puente en H
@@ -45,6 +53,12 @@
 #define A0 14
 
 
+//pines utilizados para el control del display I2C de 0.91"
+#define D6 6
+#define ANCHO_PANTALLA 128 // ancho pantalla OLED
+#define ALTO_PANTALLA 64 // alto pantalla OLED
+
+
 //Variables de control de los niveles de humedad
 double moistureThresholdMin = 25.0; 		//60.0
 double moistureThresholdMax = 40.0; 		//75.0
@@ -54,10 +68,10 @@ double brokenMoistureSensor_Threshold = 0.0;//3.0. Cuando la humedad medida está
 
 //Variables para la medidad de la humedad
 double 			lastMoistureMeasure;
-unsigned long 	takeCareOfPlantPeriod_in_secs 	= 3600; //3600
+unsigned long 	takeCareOfPlantPeriod_in_secs 	= 4; //3600
 
 //Variables para el control del riego de la planta
-boolean 		enableWatering		= true;
+bool 			enableWatering		= true;
 unsigned long 	wateringTime_ms 	= 2000;
 unsigned int 	wateringTimes 		= 1;
 unsigned long	delayBetweenWateringTimes_ms = 1000;
@@ -69,6 +83,8 @@ unsigned long	delayBetweenWateringTimes_ms = 1000;
 float b = 100.0;
 float m = -b/900.0;
 
+//variables para el control de la energia
+bool enablePowerSave = false;
 
 //Timer variables
 unsigned int prescale = 64;
@@ -76,12 +92,32 @@ byte prescale_mode = 0b011;
 unsigned long cpu_clock_freq = 16000000; //In Hz
 unsigned long time_counter_in_secs = 0;
 
+//Display
+// Objeto de la clase Adafruit_SSD1306
+//Adafruit_SSD1306 display(ANCHO_PANTALLA, ALTO_PANTALLA, &Wire, -1);
+
 //The setup function is called once at startup of the sketch
 void setup()
 {
 	// Add your initialization code here
-	// initialize serial communication at 9600 bits per second:
-	Serial.begin(9600);
+
+	#ifdef __DEBUG__
+		// initialize serial communication at 9600 bits per second:
+		Serial.println("Initializing serial communication");
+		Serial.begin(9600);
+		delay(100);
+	#endif
+
+	// Iniciar pantalla OLED en la dirección 0x3C
+//	if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+//		#ifdef __DEBUG__
+//			Serial.println("No se encuentra la pantalla OLED");
+//		#endif
+//	}
+
+
+
+	pinMode(LED_BUILTIN, OUTPUT);
 
 	//Definimos como modo salida los pines IN1 y IN2 (digitales) que servirán para controlar la salida 1 del doble puente en H que es el L298N
 	pinMode(IN1, OUTPUT);
@@ -91,6 +127,10 @@ void setup()
 	pinMode(D7, OUTPUT);
 	pinMode(D8, OUTPUT);
 
+	//Definimos como modo salida los pines D7 y D8 (digitales) que servirán para polarizar el sensor de humedad del suelo (moisture sensor)
+	pinMode(D6, OUTPUT);
+
+
 	//Definimos como modo salida el pin BRIDGE_ACTIVATION_PIN = 4 que serirá para alimentar la lógica del puente en H.
 	pinMode(BRIDGE_ACTIVATION_PIN, OUTPUT);
 
@@ -99,28 +139,30 @@ void setup()
 	pinMode(A0, INPUT);
 
 	//Initializing outputs
+	digitalWrite(LED_BUILTIN, LOW);
 	digitalWrite(IN1, LOW);
 	digitalWrite(IN2, LOW);
 	digitalWrite(D7, LOW);
 	digitalWrite(D8, LOW);
+	digitalWrite(D6, LOW);
 	digitalWrite(BRIDGE_ACTIVATION_PIN, LOW);
 
 	//Configure timer1
-	configureTimer1ClockSource(1024);
-	initTimer1(4);
-	startTimer1();
+	configureTimer1ClockSource(1024); // @suppress("Invalid arguments")
+	initTimer1(4); // @suppress("Invalid arguments")
+	startTimer1(); // @suppress("Invalid arguments")
 
 
-	LowPower.powerSave(SLEEP_MODE_PWR_SAVE, ADC_OFF, BOD_OFF, TIMER2_OFF);
-	//detachInterrupt(0);
-
+	if (enablePowerSave)
+	{
+		LowPower.powerSave(SLEEP_MODE_PWR_SAVE, ADC_OFF, BOD_OFF, TIMER2_OFF); // @suppress("Invalid arguments")
+		//detachInterrupt(0);
+	}
 
 }
 
 // The loop function is called in an endless loop
-void loop()
-{
-}
+void loop() {}
 
 
 //************************************
@@ -213,15 +255,18 @@ ISR(TIMER1_COMPA_vect)
 	if (time_counter_in_secs>takeCareOfPlantPeriod_in_secs)
 	{
 		time_counter_in_secs = 0;
-		takeCareOfPlant();
+		takeCareOfPlant(); // @suppress("Invalid arguments")
 	}
 
 	configureTimer1ClockSource(1024);
 	initTimer1(4);
     startTimer1();
 
-	LowPower.powerSave(SLEEP_MODE_PWR_SAVE, ADC_OFF, BOD_OFF, TIMER2_OFF);
-	//detachInterrupt(0);
+    if (enablePowerSave)
+	{
+		LowPower.powerSave(SLEEP_MODE_PWR_SAVE, ADC_OFF, BOD_OFF, TIMER2_OFF); // @suppress("Invalid arguments")
+		//detachInterrupt(0);
+	}
 
 }
 
@@ -232,7 +277,12 @@ ISR(TIMER1_COMPA_vect)
 
 void takeCareOfPlant()
 {
+
+	digitalWrite(LED_BUILTIN, HIGH);
+
 	lastMoistureMeasure = checkMoisture(D7, D8, A0); // @suppress("Invalid arguments")
+
+	digitalWrite(LED_BUILTIN, LOW);
 
 	if (isSoilMoistureSensorBroken(lastMoistureMeasure)) // @suppress("Invalid arguments")
 	{
@@ -283,6 +333,7 @@ bool isSoilMoistureSensorBroken(double moistureMeasure)
 
 	return BrokenMoistureSensor;
 }
+
 double checkMoisture(int positivePin, int negativePin, int channelLecture)
 {
 

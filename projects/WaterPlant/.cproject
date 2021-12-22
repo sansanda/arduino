@@ -19,25 +19,22 @@
 							<builder buildPath="${workspace_loc:/waterPlant}/Release" id="io.sloeber.sketch.builder.1753985105" keepEnvironmentInBuildfile="false" name="Arduino sketch builder" parallelBuildOn="false" superClass="io.sloeber.sketch.builder"/>
 							<tool id="io.sloeber.tool.sketch.compiler.cpp.1756042855" name="Arduino C++ Compiler" superClass="io.sloeber.tool.sketch.compiler.cpp">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="io.sloeber.compiler.cpp.sketch.option.incpath.1511598734" name="Include Paths (-I)" superClass="io.sloeber.compiler.cpp.sketch.option.incpath" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant/core/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant/libraries/Low-Power}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant_Timer1/core/variant}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant_Timer1/core/core}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.cpp.sketch.input.1197215364" name="CPP source files" superClass="io.sloeber.compiler.cpp.sketch.input"/>
 							</tool>
 							<tool id="io.sloeber.tool.compiler.c.1544896751" name="Arduino C Compiler" superClass="io.sloeber.tool.compiler.c">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="io.sloeber.compiler.c.sketch.option.incpath.1327821813" name="Include Paths (-I)" superClass="io.sloeber.compiler.c.sketch.option.incpath" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant/core/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant/libraries/Low-Power}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant_Timer1/core/variant}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant_Timer1/core/core}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.c.sketch.input.363756552" name="C Source Files" superClass="io.sloeber.compiler.c.sketch.input"/>
 							</tool>
 							<tool id="io.sloeber.tool.sketch.compiler.s.139247260" name="Arduino Assembler" superClass="io.sloeber.tool.sketch.compiler.s">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="io.sloeber.compiler.asm.sketch.option.incpath.1801744463" name="Include Paths (-I)" superClass="io.sloeber.compiler.asm.sketch.option.incpath" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant/core/core}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant/libraries/Low-Power}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant_Timer1/core/variant}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/waterPlant_Timer1/core/core}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.S.sketch.input.813397010" name="Assembly source files" superClass="io.sloeber.compiler.S.sketch.input"/>
 							</tool>
@@ -78,7 +75,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="libraries/?*/**/?xamples/**|libraries/?*/**/?xtras/**|libraries/?*/**/test*/**|libraries/?*/**/third-party/**|libraries/**/._*|libraries/?*/utility/*/*" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="libraries/Adafruit_SSD1306/scripts|libraries/Adafruit_GFX_Library/Fonts|libraries/Adafruit_GFX_Library/fontconvert|libraries/ESP8266_and_ESP32_OLED_driver_for_SSD1306_displays/resources|libraries/?*/**/?xamples/**|libraries/?*/**/?xtras/**|libraries/?*/**/test*/**|libraries/?*/**/third-party/**|libraries/**/._*|libraries/?*/utility/*/*" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
